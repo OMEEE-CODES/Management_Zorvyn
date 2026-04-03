@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Dashboard API Tester</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 8px; color: #38bdf8; }
+    .subtitle { text-align: center; color: #94a3b8; margin-bottom: 24px; font-size: 14px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .auth-section { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+    .auth-section h2 { color: #38bdf8; margin-bottom: 12px; font-size: 16px; }
+    .auth-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    select, button, input { padding: 8px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 14px; }
+    button { background: #2563eb; border: none; cursor: pointer; font-weight: 600; }
+    button:hover { background: #1d4ed8; }
+    button.danger { background: #dc2626; }
+    button.danger:hover { background: #b91c1c; }
+    button.success { background: #16a34a; }
+    .status { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+    .status.connected { background: #16a34a33; color: #4ade80; }
+    .status.disconnected { background: #dc262633; color: #f87171; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+    .card { background: #1e293b; padding: 16px; border-radius: 12px; }
+    .card h3 { color: #38bdf8; margin-bottom: 12px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .card h3 button { font-size: 12px; padding: 4px 10px; }
+    pre { background: #0f172a; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; line-height: 1.5; max-height: 400px; overflow-y: auto; white-space: pre-wrap; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat { background: #1e293b; padding: 16px; border-radius: 12px; text-align: center; }
+    .stat .value { font-size: 24px; font-weight: 700; color: #38bdf8; }
+    .stat .label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .stat.income .value { color: #4ade80; }
+    .stat.expense .value { color: #f87171; }
+    .stat.balance .value { color: #facc15; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Finance Dashboard API Tester</h1>
+    <p class="subtitle">Backend Developer Intern Assignment - Omkar More</p>
+
+    <div class="auth-section">
+      <h2>Authentication</h2>
+      <div class="auth-row">
+        <select id="userSelect">
+          <option value="admin@example.com">Admin (admin@example.com)</option>
+          <option value="analyst@example.com">Analyst (analyst@example.com)</option>
+          <option value="viewer@example.com">Viewer (viewer@example.com)</option>
+        </select>
+        <button onclick="login()">Login</button>
+        <span id="authStatus" class="status disconnected">Not logged in</span>
+        <span id="roleDisplay" style="color:#94a3b8; font-size:13px;"></span>
+      </div>
+    </div>
+
+    <div id="summarySection" style="display:none;">
+      <div class="summary-grid">
+        <div class="stat income"><div class="value" id="totalIncome">-</div><div class="label">Total Income</div></div>
+        <div class="stat expense"><div class="value" id="totalExpenses">-</div><div class="label">Total Expenses</div></div>
+        <div class="stat balance"><div class="value" id="netBalance">-</div><div class="label">Net Balance</div></div>
+        <div class="stat"><div class="value" id="totalRecords">-</div><div class="label">Total Records</div></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Financial Records <button onclick="loadRecords()">Refresh</button></h3>
+        <pre id="recordsOutput">Click "Login" then data will load automatically.</pre>
+      </div>
+      <div class="card">
+        <h3>Category Breakdown <button onclick="loadCategories()">Refresh</button></h3>
+        <pre id="categoriesOutput">-</pre>
+      </div>
+      <div class="card">
+        <h3>Recent Activity <button onclick="loadRecent()">Refresh</button></h3>
+        <pre id="recentOutput">-</pre>
+      </div>
+      <div class="card">
+        <h3>Monthly Trends <button onclick="loadTrends()">Refresh</button></h3>
+        <pre id="trendsOutput">-</pre>
+      </div>
+      <div class="card">
+        <h3>Users (Admin only) <button onclick="loadUsers()">Refresh</button></h3>
+        <pre id="usersOutput">-</pre>
+      </div>
+      <div class="card">
+        <h3>Access Control Test</h3>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <button class="success" onclick="testCreate()">Try Create Record</button>
+          <button class="danger" onclick="testDelete()">Try Delete Record</button>
+        </div>
+        <pre id="accessOutput">Login with different roles to test access control.
+- Viewer: can only READ records and dashboard
+- Analyst: can READ + view trends/insights
+- Admin: full access (CRUD records + manage users)</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+    let token = null;
+
+    async function api(path, options = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      try {
+        const res = await fetch(API + path, { ...options, headers });
+        return await res.json();
+      } catch (e) {
+        return { success: false, message: e.message };
+      }
+    }
+
+    async function login() {
+      const email = document.getElementById('userSelect').value;
+      const data = await api('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password: 'password123' })
+      });
+      if (data.success) {
+        token = data.data.token;
+        document.getElementById('authStatus').textContent = `Logged in as ${data.data.user.name}`;
+        document.getElementById('authStatus').className = 'status connected';
+        document.getElementById('roleDisplay').textContent = `Role: ${data.data.user.role.toUpperCase()}`;
+        document.getElementById('summarySection').style.display = 'block';
+        loadAll();
+      } else {
+        document.getElementById('authStatus').textContent = data.message;
+      }
+    }
+
+    async function loadAll() {
+      loadSummary(); loadRecords(); loadCategories(); loadRecent(); loadTrends(); loadUsers();
+    }
+
+    async function loadSummary() {
+      const data = await api('/api/dashboard/summary');
+      if (data.success) {
+        const s = data.data.summary;
+        document.getElementById('totalIncome').textContent = `₹${s.totalIncome.toLocaleString()}`;
+        document.getElementById('totalExpenses').textContent = `₹${s.totalExpenses.toLocaleString()}`;
+        document.getElementById('netBalance').textContent = `₹${s.netBalance.toLocaleString()}`;
+        document.getElementById('totalRecords').textContent = s.totalRecords;
+      }
+    }
+
+    async function loadRecords() {
+      const data = await api('/api/records?limit=10');
+      document.getElementById('recordsOutput').textContent = data.success
+        ? data.data.records.map(r => `${r.date.slice(0,10)} | ${r.type.padEnd(7)} | ₹${r.amount.toString().padStart(6)} | ${r.category.padEnd(14)} | ${r.description || ''}`).join('\n')
+          + `\n\n--- Page ${data.data.pagination.page} of ${data.data.pagination.pages} (${data.data.pagination.total} total) ---`
+        : data.message;
+    }
+
+    async function loadCategories() {
+      const data = await api('/api/dashboard/categories');
+      document.getElementById('categoriesOutput').textContent = data.success
+        ? data.data.breakdown.map(c => `${c.type.padEnd(7)} | ${c.category.padEnd(14)} | ₹${c.total.toString().padStart(6)} (${c.count} records)`).join('\n')
+        : data.message;
+    }
+
+    async function loadRecent() {
+      const data = await api('/api/dashboard/recent?limit=8');
+      document.getElementById('recentOutput').textContent = data.success
+        ? data.data.activity.map(r => `${r.createdAt.slice(0,10)} | ${r.type.padEnd(7)} | ₹${r.amount.toString().padStart(6)} | ${r.category}`).join('\n')
+        : data.message;
+    }
+
+    async function loadTrends() {
+      const data = await api('/api/dashboard/trends');
+      document.getElementById('trendsOutput').textContent = data.success
+        ? data.data.trends.map(t => `${t.year}-${t.month.toString().padStart(2,'0')} | ${t.type.padEnd(7)} | ₹${t.total.toString().padStart(6)} (${t.count} records)`).join('\n')
+        : `⚠ ${data.message}`;
+    }
+
+    async function loadUsers() {
+      const data = await api('/api/users');
+      document.getElementById('usersOutput').textContent = data.success
+        ? data.data.users.map(u => `${u.name.padEnd(15)} | ${u.email.padEnd(25)} | ${u.role.padEnd(8)} | ${u.isActive ? 'Active' : 'Inactive'}`).join('\n')
+        : `⚠ ${data.message}`;
+    }
+
+    async function testCreate() {
+      const data = await api('/api/records', {
+        method: 'POST',
+        body: JSON.stringify({ amount: 999, type: 'income', category: 'freelance', description: 'Test record', date: new Date().toISOString() })
+      });
+      document.getElementById('accessOutput').textContent = data.success
+        ? `✅ Record created successfully!\n\n${JSON.stringify(data.data.record, null, 2)}`
+        : `❌ ${data.message}`;
+      if (data.success) loadAll();
+    }
+
+    async function testDelete() {
+      const records = await api('/api/records?limit=1');
+      if (!records.success || !records.data.records.length) {
+        document.getElementById('accessOutput').textContent = 'No records to delete.';
+        return;
+      }
+      const id = records.data.records[0]._id;
+      const data = await api(`/api/records/${id}`, { method: 'DELETE' });
+      document.getElementById('accessOutput').textContent = data.success
+        ? `✅ Record deleted successfully!`
+        : `❌ ${data.message}`;
+      if (data.success) loadAll();
+    }
+  </script>
+</body>
+</html>
